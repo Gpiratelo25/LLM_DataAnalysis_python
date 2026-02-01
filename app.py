@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import anthropic
+
 
 st.set_page_config(
     page_title="LLM Data Analysis",
@@ -7,7 +9,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
+#Chamando a api 
+client=anthropic.Anthropic(api_key=st.secrets["ANTROPIC_API_KEY"])
 #estado de inicialização da sessão
 if "messages" not in st.session_state:
     st.session_state.messages=[]
