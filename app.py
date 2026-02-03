@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import anthropic
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
 
 
 st.set_page_config(
@@ -11,6 +15,21 @@ st.set_page_config(
 )
 #Chamando a api 
 client=anthropic.Anthropic(api_key=st.secrets['ANTROPIC_API_KEY'])
+
+def build_data_summary(df: pd.DataFrame) -> dict:
+    """Return lightweight metadata used to build the prompt when the dataset is large."""
+    sample_rows = df.head(min(len(df), 5)).to_string(index=False)
+    try:
+        stats_repr = df.describe(include="all").to_string()
+    except Exception:
+        stats_repr = "Statistics unavailable"
+    return {
+        "shape": df.shape,
+        "columns": df.columns.tolist(),
+        "dtypes": df.dtypes.astype(str).to_dict(),
+        "sample": sample_rows,
+        "stats": stats_repr,
+    }
 
 
 #estado de inicialização da sessão
@@ -36,6 +55,7 @@ with st.sidebar:
 
             df=pd.read_csv(uploaded_file)
             st.session_state.df=df
+            st.session_state.data_summary = build_data_summary(df)
             st.success("File loaded successfully!")
 
 
@@ -80,6 +100,8 @@ if st.session_state.df is not None:
         df=st.session_state.df
 
         if len(df)>100:
+            if not st.session_state.data_summary:
+                st.session_state.data_summary = build_data_summary(df)
             data_context=f"""
             Dataset Shape:{st.session_state.data_summary['shape']}
             Columns: {', '.join(st.session_state.data_summary['columns'])}
@@ -97,25 +119,35 @@ if st.session_state.df is not None:
         system_prompt=f""" You are a helpful data analyst assistant.
         The user has uploaded a CSV file with the following information:{data_context}
 
+        the data is loaded in a pandas dataframe called 'df'
+
         Guidelines:
-        1.ANWSER THE QUESTION CLEARLY
-        2.FOCUSING ON PROVIDING DATA INSIGHTS
-        3.BE SPECIFIC AND HELPFUL
+        1.ANSWER THE QUESTION CLEARLY
+        2.IF THE QUESTION REQUIRES ANALYSIS WRITE PYTHON,MATPLOTLIB OR SEABORN 
+
+        3.FOR VISUALIZATIONS ALWAQYS USE PLT.FIGURE, BEFORE PLOTING AND INCLUDE PLT.TIGHTLAYOUT
+        ALWAYS VALIDATE DATA BEFORE ANSWERS
+        IF YOU CAN'T ANSWER, EXPLAIN WHY
+        FOCUS ON DATA INSIGHTS ROUGHLY TO THE QUESTION ASKED
+
+
+        WHEN WRITIN CODE:
+            - IMPORT STATEMENT ARE ALREADY DONE
         """
         with st.chat_message("assistant"):
             with st.spinner("Thinking ... "):
                     try:
 
                         response = client.messages.create(
-                            model="claude-3-5-sonnet-20241022",
+                            model="claude-3-5-haiku-latest",
                             max_tokens=1024,
-                            messages=[
-                                {"role":"system","content":system_prompt},
-                                {"role":"user","content":user_input}
-                            ],
+                            system=system_prompt,
+                            messages=[{"role":"user","content":user_input}],
                             temperature=0.1
                         )
-                        reply= response.content
+                        reply="".join(
+                            block.text for block in response.content if block.type == "text"
+                        )
 
                         st.markdown(reply)
 
