@@ -1,8 +1,9 @@
 import streamlit as st
-import pandas as pd
-import anthropic
-import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+from matplotlib import pyplot as plt
+import anthropic
+
 
 
 
@@ -42,7 +43,7 @@ if "data_summary" not in st.session_state:
 
 
 
-st.title("📊 LLM Data Analysis Application")
+st.title("LLM Data Analysis Application")
 
 st.markdown("Upload your dataset and let the LLM assist you in analyzing it!")
 
@@ -125,7 +126,7 @@ if st.session_state.df is not None:
         1.ANSWER THE QUESTION CLEARLY
         2.IF THE QUESTION REQUIRES ANALYSIS WRITE PYTHON,MATPLOTLIB OR SEABORN 
 
-        3.FOR VISUALIZATIONS ALWAQYS USE PLT.FIGURE, BEFORE PLOTING AND INCLUDE PLT.TIGHTLAYOUT
+        3.FOR VISUALIZATIONS ALWAQYS USE PLT.FIGURE, BEFORE PLOTING AND INCLUDE PLT.TIGHTLAYOUT 
         ALWAYS VALIDATE DATA BEFORE ANSWERS
         IF YOU CAN'T ANSWER, EXPLAIN WHY
         FOCUS ON DATA INSIGHTS ROUGHLY TO THE QUESTION ASKED
@@ -150,6 +151,33 @@ if st.session_state.df is not None:
                         )
 
                         st.markdown(reply)
+
+                        if "```python" in reply:
+                            code_blocks=reply.split("```python")
+                            for i in range(1,len(code_blocks)):
+                                code=code_blocks[i].split("```")[0]
+                        try:
+                            plt.figure(figsize=(10,6))
+
+                            exec_globals={
+                                'df':df,
+                                'pd':pd,
+                                'plt':plt,
+                                'sns':sns,
+                                'st':st
+                            }
+                            exec(code.strip(),exec_globals)
+
+                            fig =plt.gcf()
+                            if fig.get_size_inches():
+                                st.pyplot.fig()
+
+                                plt.close()
+                        except Exception as e:
+                            st.error(f"erro {e}")
+                            st.code(code, language="python")
+
+
 
                         st.session_state.messages.append({"role":"Assitant","content":reply})
                     except Exception as e:
