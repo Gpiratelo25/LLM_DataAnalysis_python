@@ -86,7 +86,9 @@ if st.session_state.df is not None:
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
-
+            # re-display figure
+            if 'figure' in msg:
+                st.pyplot(msg['figure'])
     user_input=st.chat_input("Ask any question about your data")
 
     if user_input:
@@ -169,10 +171,24 @@ if st.session_state.df is not None:
                             exec(code.strip(),exec_globals)
 
                             fig =plt.gcf()
-                            if fig.get_size_inches():
-                                st.pyplot.fig()
+                            if fig.get_axes():
+                                st.pyplot(fig)
+
+                                #Save this figure
+                                st.session_state.messages.append({
+                                    'role':'assistant',
+                                    'content':reply,
+                                    'figure':fig
+                                })
+
+                            else:
+                                st.session_state.messages.append({
+                                    'role':'assistant',
+                                    'content':reply
+                                })
 
                                 plt.close()
+
                         except Exception as e:
                             st.error(f"erro {e}")
                             st.code(code, language="python")
@@ -180,6 +196,9 @@ if st.session_state.df is not None:
 
 
                         st.session_state.messages.append({"role":"Assitant","content":reply})
+
+
+
                     except Exception as e:
                         st.error(f"erro generating response:   {e}")
                         st.info("Please try again")
@@ -198,5 +217,17 @@ else:
         st.markdown("1- What are the main trend:")
 
 
+
+
+
     
 
+#footer 
+
+st.markdown ("--"*89)
+st.markdown("""
+            <div style='text-align: center;color:gray;font-size:12px;'>
+            Tip: Be specific with your questions for better results |
+            Your data stay private and is not stored
+            </div>
+            """, unsafe_allow_html=True)
