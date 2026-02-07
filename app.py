@@ -17,6 +17,8 @@ st.set_page_config(
 #Chamando a api 
 client=anthropic.Anthropic(api_key=st.secrets['ANTROPIC_API_KEY'])
 
+## CRIANDO A FUNÇÃO PARA TRAZER O SUMARIO DOS DADOS
+
 def build_data_summary(df: pd.DataFrame) -> dict:
     """Return lightweight metadata used to build the prompt when the dataset is large."""
     sample_rows = df.head(min(len(df), 5)).to_string(index=False)
@@ -46,7 +48,7 @@ if "data_summary" not in st.session_state:
 st.title("LLM Data Analysis Application")
 
 st.markdown("Upload your dataset and let the LLM assist you in analyzing it!")
-
+### ----------------- PROGRAMANDO O SIDEBAR
 with st.sidebar:
     st.header("Upload your Data")
     uploaded_file = st.file_uploader("Choose a file", type=["csv", "xlsx"])
@@ -81,7 +83,7 @@ with st.sidebar:
         st.info("Upload you csv")
 
 
-#Chat interface
+### CHAT INTERFACE
 if st.session_state.df is not None:
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
@@ -138,14 +140,25 @@ if st.session_state.df is not None:
             - IMPORT STATEMENT ARE ALREADY DONE
         """
         with st.chat_message("assistant"):
+            message_placeholder = st.empty()
             with st.spinner("Thinking ... "):
                     try:
+                        
+                        # PUXA O HISTORICO DA CONVERSA
+                        messages =[{'role':'system','content':system_prompt}]
+
+                        for msg in st.session_state.messages[-6:]:
+                            messages.append({'role':msg['role'],'content':msg['content']})
+                        messages.append({'role':'user','content':user_input})
+
+
+
 
                         response = client.messages.create(
                             model="claude-3-5-haiku-latest",
                             max_tokens=1024,
-                            system=system_prompt,
-                            messages=[{"role":"user","content":user_input}],
+            
+                            messages=messages,
                             temperature=0.1
                         )
                         reply="".join(
@@ -213,18 +226,15 @@ else:
     with col2:
         st.info("Please Upload a CSV file to start")
 
-        st.markdown("Examples:")
-        st.markdown("1- What are the main trend:")
 
 
 
 
 
     
-
-#footer 
-
-st.markdown ("--"*89)
+#-----------------------------------------------------
+#---------------------footer
+st.markdown ("---")
 st.markdown("""
             <div style='text-align: center;color:gray;font-size:12px;'>
             Tip: Be specific with your questions for better results |
